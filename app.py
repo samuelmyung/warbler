@@ -6,14 +6,17 @@ from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import Unauthorized
 
+
 from forms import UserAddForm, LoginForm, MessageForm, CsrfForm
 from models import db, connect_db, User, Message
+
 
 load_dotenv()
 
 CURR_USER_KEY = "curr_user"
 
 app = Flask(__name__)
+
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
 app.config['SQLALCHEMY_ECHO'] = False
@@ -22,6 +25,8 @@ app.config['SECRET_KEY'] = os.environ['SECRET_KEY']
 toolbar = DebugToolbarExtension(app)
 
 connect_db(app)
+
+
 
 
 ##############################################################################
@@ -37,6 +42,11 @@ def add_user_to_g():
 
     else:
         g.user = None
+
+@app.before_request
+def add_csrf_token_to_g():
+
+    g.csrf_form = CsrfForm()
 
 
 def do_login(user):
@@ -60,7 +70,7 @@ def signup():
 
     If form not valid, present form.
 
-    If the there already is a user with that username: flash message
+    If there already is a user with that username: flash message
     and re-present form.
     """
 
@@ -94,6 +104,9 @@ def signup():
 def login():
     """Handle user login and redirect to homepage on success."""
 
+    if CURR_USER_KEY in session:
+        return redirect(f"/users/{session[CURR_USER_KEY]}")
+
     form = LoginForm()
 
     if form.validate_on_submit():
@@ -116,13 +129,12 @@ def login():
 def logout():
     """Handle logout of user and redirect to homepage."""
 
-    # form = g.csrf_form
-    form = CsrfForm()
+    form = g.csrf_form
 
     if form.validate_on_submit():
         session.pop(CURR_USER_KEY)
         flash("Succesfully Logged out!")
-        return redirect("/homepage")
+        return redirect("/")
 
     else:
         raise Unauthorized()
@@ -200,16 +212,19 @@ def show_followers(user_id):
 def start_following(follow_id):
     """Add a follow for the currently-logged-in user.
 
-    Redirect to following page for the current for the current user.
+    Redirect to following page for the current user.
     """
 
     if not g.user:
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    followed_user = User.query.get_or_404(follow_id)
-    g.user.following.append(followed_user)
-    db.session.commit()
+    form = g.csrf_form
+
+    if form.validate_on_submit():
+        followed_user = User.query.get_or_404(follow_id)
+        g.user.following.append(followed_user)
+        db.session.commit()
 
     return redirect(f"/users/{g.user.id}/following")
 
@@ -225,9 +240,12 @@ def stop_following(follow_id):
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    followed_user = User.query.get_or_404(follow_id)
-    g.user.following.remove(followed_user)
-    db.session.commit()
+    form = g.csrf_form
+
+    if form.validate_on_submit():
+        followed_user = User.query.get_or_404(follow_id)
+        g.user.following.remove(followed_user)
+        db.session.commit()
 
     return redirect(f"/users/{g.user.id}/following")
 
@@ -250,10 +268,12 @@ def delete_user():
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    do_logout()
+    form = g.csrf_form
 
-    db.session.delete(g.user)
-    db.session.commit()
+    if form.validate_on_submit():
+        do_logout()
+        db.session.delete(g.user)
+        db.session.commit()
 
     return redirect("/signup")
 
