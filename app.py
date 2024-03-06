@@ -328,9 +328,12 @@ def delete_message(message_id):
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    msg = Message.query.get_or_404(message_id)
-    db.session.delete(msg)
-    db.session.commit()
+    form = g.csrf_form
+
+    if form.validate_on_submit():
+        msg = Message.query.get_or_404(message_id)
+        db.session.delete(msg)
+        db.session.commit()
 
     return redirect(f"/users/{g.user.id}")
 
