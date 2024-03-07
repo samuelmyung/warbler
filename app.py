@@ -27,8 +27,6 @@ toolbar = DebugToolbarExtension(app)
 connect_db(app)
 
 
-
-
 ##############################################################################
 # User signup/login/logout
 
@@ -42,6 +40,7 @@ def add_user_to_g():
 
     else:
         g.user = None
+
 
 @app.before_request
 def add_csrf_token_to_g():
@@ -181,6 +180,8 @@ def show_user(user_id):
 
     user = User.query.get_or_404(user_id)
 
+    """ form = g.csrf_form """
+
     return render_template('users/show.html', user=user)
 
 
@@ -191,6 +192,8 @@ def show_following(user_id):
     if not g.user:
         flash("Access unauthorized.", "danger")
         return redirect("/")
+
+    """ form = g.csrf_form """
 
     user = User.query.get_or_404(user_id)
     return render_template('users/following.html', user=user)
@@ -203,6 +206,8 @@ def show_followers(user_id):
     if not g.user:
         flash("Access unauthorized.", "danger")
         return redirect("/")
+
+    """ form = g.csrf_form """
 
     user = User.query.get_or_404(user_id)
     return render_template('users/followers.html', user=user)
@@ -253,6 +258,16 @@ def stop_following(follow_id):
 @app.route('/users/profile', methods=["GET", "POST"])
 def profile():
     """Update profile for current user."""
+
+    """ if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    form = g.csrf_form
+
+    # if form.validate_on_submit():
+
+    return render_template("users/detail.html", user=g.user, form=form) """
 
     # IMPLEMENT THIS
 
