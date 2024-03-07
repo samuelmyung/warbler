@@ -32,6 +32,42 @@ class UserAddForm(FlaskForm):
         validators=[Optional(), URL(), Length(max=255)]
     )
 
+# Could we pass in UserAddForm instead of FlaskForm and add the missing properties?
+class UserEditForm(FlaskForm):
+    """Form for editing users."""
+
+    username = StringField(
+        'Username',
+        validators=[InputRequired(), Length(max=30)],
+    )
+
+    email = StringField(
+        'E-mail',
+        validators=[InputRequired(), Email(), Length(max=50)],
+    )
+
+    image_url = StringField(
+        '(Optional) Image URL',
+        validators=[Optional(), URL(), Length(max=255)]
+    )
+
+    header_image_url = StringField(
+        '(Optional) Header Image URL',
+        validators=[Optional(), URL(), Length(max=255)]
+    )
+
+    bio = TextAreaField(
+        'Bio',
+        validators=[Optional()]
+    )
+
+    password = PasswordField(
+        'Password',
+        validators=[InputRequired()]
+    )
+
+
+
 
 class LoginForm(FlaskForm):
     """Login form."""

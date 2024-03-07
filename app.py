@@ -7,8 +7,8 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import Unauthorized
 
 
-from forms import UserAddForm, LoginForm, MessageForm, CsrfForm
-from models import db, connect_db, User, Message
+from forms import UserAddForm, LoginForm, MessageForm, CsrfForm, UserEditForm
+from models import db, connect_db, User, Message, DEFAULT_IMAGE_URL, DEFAULT_HEADER_IMAGE_URL
 
 
 load_dotenv()
@@ -259,15 +259,35 @@ def stop_following(follow_id):
 def profile():
     """Update profile for current user."""
 
-    """ if not g.user:
+    if not g.user:
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    form = g.csrf_form
+    user = g.user
+    form = UserEditForm(obj=user)
 
-    # if form.validate_on_submit():
+    if form.validate_on_submit():
+        user = User.authenticate(
+            user.username,
+            form.password.data
+        )
 
-    return render_template("users/detail.html", user=g.user, form=form) """
+        if user:
+            user.username = form.username.data or user.username
+            user.email = form.email.data or user.email
+            user.image_url = form.image_url.data or DEFAULT_IMAGE_URL
+            user.header_image_url = form.header_image_url.data or DEFAULT_HEADER_IMAGE_URL
+            user.bio = form.bio.data or ""
+
+            db.session.commit()
+
+            return redirect(f"/users/{user.id}")
+
+        flash("Invalid password.", 'danger')
+        return render_template("/users/edit.html", user=user, form=form)
+
+    else:
+        return render_template("/users/edit.html", user=user, form=form)
 
     # IMPLEMENT THIS
 
