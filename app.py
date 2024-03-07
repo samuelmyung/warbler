@@ -216,7 +216,7 @@ def start_following(follow_id):
 
     Redirect to following page for the current user.
     """
-    # TODO: Refactor for fast failing
+    # TODO: Refactor for fail fast apporach
     if not g.user:
         flash("Access unauthorized.", "danger")
         return redirect("/")
@@ -276,6 +276,7 @@ def edit_profile():
             user.header_image_url = form.header_image_url.data or DEFAULT_HEADER_IMAGE_URL
             user.bio = form.bio.data or ""
 
+            # TODO: Wrap within a Try... except
             db.session.commit()
 
             return redirect(f"/users/{user.id}")
