@@ -51,6 +51,7 @@
         <li><a href="/messages/new">New Message</a></li>
         <li>
           <form>
+            <!-- TODO: Put action and method in form tag -->
             {{ g.csrf_form.hidden_tag() }}
             <button formaction="/logout" formmethod="POST">
               Log out
