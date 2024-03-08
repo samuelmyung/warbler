@@ -6,7 +6,6 @@ from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
 
-
 from forms import UserAddForm, LoginForm, MessageForm, CsrfForm, UserEditForm
 from models import db, connect_db, User, Message, Like, DEFAULT_IMAGE_URL, DEFAULT_HEADER_IMAGE_URL
 
@@ -284,8 +283,6 @@ def edit_profile():
             flash("Username is already taken.", 'danger')
             return render_template("/users/edit.html", user=user, form=form)
 
-
-
         flash("Invalid password.", 'danger')
         return render_template("/users/edit.html", user=user, form=form)
 
@@ -382,18 +379,26 @@ def delete_message(message_id):
 def like_message(message_id):
     """Like a message"""
 
+    print('*************** Inside messages!')
+
     form = g.csrf_form
 
     if not g.user or not form.validate_on_submit():
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    msg = Message.query.get_or_404(message_id)
-    like = Like.query.get_or_404(message_id)
+    message = Message.query.get_or_404(message_id)
 
+    if message in g.user.liked_messages:
+        g.user.liked_messages.remove(message)
+        db.session.commit()
 
+    else:
+        g.user.liked_messages.append(message)
+        db.session.commit()
 
-
+    """ print(f'***********liked: {g.user.liked_messages}') """
+    return redirect(f"/users/{g.user.id}")
 
 
 ##############################################################################
@@ -407,6 +412,8 @@ def homepage():
     - anon users: no messages
     - logged in: 100 most recent messages of self & followed_users
     """
+
+    print('It works!')
 
     if g.user:
         messages = (Message

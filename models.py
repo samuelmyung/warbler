@@ -98,6 +98,12 @@ class User(db.Model):
         backref="following",
     )
 
+    liked_messages = db.relationship(
+        "Message",
+        secondary="likes",
+        backref="users"
+    )
+
     def __repr__(self):
         return f"<User #{self.id}: {self.username}, {self.email}>"
 
@@ -190,23 +196,17 @@ class Like(db.Model):
 
     __tablename__ = 'likes'
 
-    id = db.Column(
-        db.Integer,
-        primary_key=True,
-    )
-
     user_id = db.Column(
         db.Integer,
         db.ForeignKey('users.id'),
-        nullable=False,
+        primary_key=True
     )
 
     message_id = db.Column(
         db.Integer,
         db.ForeignKey('messages.id'),
-        nullable=False,
+        primary_key=True
     )
-
 
 
 def connect_db(app):
