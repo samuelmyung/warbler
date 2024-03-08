@@ -19,6 +19,12 @@
         <span class="text-muted">
               {{ message.timestamp.strftime('%d %B %Y') }}
             </span>
+          <form action="/messages/{{ message.id }}/like" method="POST" class="d-inline">
+            <button class="btn btn-icon inline-btn">
+              <i class="bi bi-star" style="position: relative; z-index: 10;"></i>
+              <!-- Give it a z-index to stack above the card -->
+            </button>
+          </form>
         <p>{{ message.text }}</p>
       </div>
     </li>

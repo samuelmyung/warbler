@@ -4,11 +4,11 @@ from dotenv import load_dotenv
 from flask import Flask, render_template, request, flash, redirect, session, g
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
-from werkzeug.exceptions import Unauthorized
+
 
 
 from forms import UserAddForm, LoginForm, MessageForm, CsrfForm, UserEditForm
-from models import db, connect_db, User, Message, DEFAULT_IMAGE_URL, DEFAULT_HEADER_IMAGE_URL
+from models import db, connect_db, User, Message, Like, DEFAULT_IMAGE_URL, DEFAULT_HEADER_IMAGE_URL
 
 
 load_dotenv()
@@ -46,6 +46,11 @@ def add_user_to_g():
 def add_csrf_token_to_g():
 
     g.csrf_form = CsrfForm()
+
+# @app.before_request
+# def add_like_to_g():
+
+#     g.like = CsrfForm()
 
 
 def do_login(user):
@@ -130,14 +135,13 @@ def logout():
 
     form = g.csrf_form
 
-    if form.validate_on_submit():
-
-        do_logout()
-        flash("Succesfully Logged out!")
+    if not g.user or not form.validate_on_submit():
+        flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    else:
-        raise Unauthorized()
+    do_logout()
+    flash("Succesfully Logged out!")
+    return redirect("/")
 
     # IMPLEMENT THIS AND FIX BUG
     # DO NOT CHANGE METHOD ON ROUTE
@@ -216,17 +220,15 @@ def start_following(follow_id):
 
     Redirect to following page for the current user.
     """
-    # TODO: Refactor for fail fast apporach
-    if not g.user:
+    form = g.csrf_form
+
+    if not g.user or not form.validate_on_submit():
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    form = g.csrf_form
-
-    if form.validate_on_submit():
-        followed_user = User.query.get_or_404(follow_id)
-        g.user.following.append(followed_user)
-        db.session.commit()
+    followed_user = User.query.get_or_404(follow_id)
+    g.user.following.append(followed_user)
+    db.session.commit()
 
     return redirect(f"/users/{g.user.id}/following")
 
@@ -237,17 +239,14 @@ def stop_following(follow_id):
 
     Redirect to following page for the current for the current user.
     """
-    # TODO: Refactor for fail fast apporach
-    if not g.user:
+    form = g.csrf_form
+    if not g.user or not form.validate_on_submit():
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    form = g.csrf_form
-
-    if form.validate_on_submit():
-        followed_user = User.query.get_or_404(follow_id)
-        g.user.following.remove(followed_user)
-        db.session.commit()
+    followed_user = User.query.get_or_404(follow_id)
+    g.user.following.remove(followed_user)
+    db.session.commit()
 
     return redirect(f"/users/{g.user.id}/following")
 
@@ -264,22 +263,28 @@ def edit_profile():
     form = UserEditForm(obj=user)
 
     if form.validate_on_submit():
-        user = User.authenticate(
-            user.username,
-            form.password.data
-        )
+        try:
+            user = User.authenticate(
+                user.username,
+                form.password.data
+            )
 
-        if user:
-            user.username = form.username.data or user.username
-            user.email = form.email.data or user.email
-            user.image_url = form.image_url.data or DEFAULT_IMAGE_URL
-            user.header_image_url = form.header_image_url.data or DEFAULT_HEADER_IMAGE_URL
-            user.bio = form.bio.data or ""
+            if user:
+                user.username = form.username.data or user.username
+                user.email = form.email.data or user.email
+                user.image_url = form.image_url.data or DEFAULT_IMAGE_URL
+                user.header_image_url = form.header_image_url.data or DEFAULT_HEADER_IMAGE_URL
+                user.bio = form.bio.data or ""
 
-            # TODO: Wrap within a Try... except
-            db.session.commit()
+                db.session.commit()
+                return redirect(f"/users/{user.id}")
 
-            return redirect(f"/users/{user.id}")
+        except IntegrityError:
+            db.session.rollback()
+            flash("Username is already taken.", 'danger')
+            return render_template("/users/edit.html", user=user, form=form)
+
+
 
         flash("Invalid password.", 'danger')
         return render_template("/users/edit.html", user=user, form=form)
@@ -298,7 +303,6 @@ def delete_user():
     """
     form = g.csrf_form
 
-    # TODO: REFACTOR TO If not g.user or not form.validate_on_submit()
     if not g.user or not form.validate_on_submit():
         flash("Access unauthorized.", "danger")
         return redirect("/")
@@ -358,19 +362,38 @@ def delete_message(message_id):
     Check that this message was written by the current user.
     Redirect to user page on success.
     """
+    form = g.csrf_form
 
-    if not g.user:
+    if not g.user or not form.validate_on_submit():
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    form = g.csrf_form
-
-    if form.validate_on_submit():
-        msg = Message.query.get_or_404(message_id)
-        db.session.delete(msg)
-        db.session.commit()
+    msg = Message.query.get_or_404(message_id)
+    db.session.delete(msg)
+    db.session.commit()
 
     return redirect(f"/users/{g.user.id}")
+
+
+##############################################################################
+# Likes routes:
+
+@app.post('/messages/<int:message_id>/like')
+def like_message(message_id):
+    """Like a message"""
+
+    form = g.csrf_form
+
+    if not g.user or not form.validate_on_submit():
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    msg = Message.query.get_or_404(message_id)
+    like = Like.query.get_or_404(message_id)
+
+
+
+
 
 
 ##############################################################################
