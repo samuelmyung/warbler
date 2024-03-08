@@ -5,6 +5,7 @@
 #    python -m unittest test_user_model.py
 
 
+from app import app
 import os
 from unittest import TestCase
 from sqlalchemy.exc import IntegrityError
@@ -21,7 +22,6 @@ os.environ['DATABASE_URL'] = "postgresql:///warbler_test"
 
 # Now we can import app
 
-from app import app
 
 # Create our tables (we do this here, so we only create the tables
 # once for all tests --- in each test, we'll delete the data
@@ -33,14 +33,25 @@ db.create_all()
 
 class MessageModelTestCase(TestCase):
     def setUp(self):
-        User.query.delete()
+        Message.query.delete()
 
-        u1 = User.signup("u1", "u1@email.com", "password", None)
-        u2 = User.signup("u2", "u2@email.com", "password", None)
+        msg = Message(
+            text="message",
+            timestamp="2024-03-08 12:00:00",
+            user_id="u1")
 
         db.session.commit()
-        self.u1_id = u1.id
-        self.u2_id = u2.id
+        self.msg_id = msg.id
+        self.msg = msg
 
     def tearDown(self):
         db.session.rollback()
+
+    def test_msg_instance(self):
+        self.assertIsInstance(self.msg, Message)
+
+    def test_msg_text_msg_user(self):
+        msg = Message.query.get(self.msg)
+        u1 = User.signup("u1", "u1@email.com", "password", None)
+
+        self.assertIn(u1.messages, msg)
