@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from flask import Flask, render_template, request, flash, redirect, session, g
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
-
+from urllib.parse import urlparse
 
 from forms import UserAddForm, LoginForm, MessageForm, CsrfForm, UserEditForm
 from models import db, connect_db, User, Message, Like, DEFAULT_IMAGE_URL, DEFAULT_HEADER_IMAGE_URL
@@ -375,12 +375,25 @@ def delete_message(message_id):
 ##############################################################################
 # Likes routes:
 
+@app.get('/users/<int:user_id>/likes')
+def show_likes(user_id):
+    """ Show all warbles a user has liked """
+
+    user = User.query.get_or_404(user_id)
+
+    return render_template('users/likes.html', user=user)
+
+
 @app.post('/messages/<int:message_id>/like')
 def like_message(message_id):
     """Like a message"""
 
-    print('*************** Inside messages!')
+    # TODO: use request.url
+    referrer = request.referrer
+    parsed_url = urlparse(referrer)
+    path = parsed_url.path
 
+    # TODO: Just use csrf_form
     form = g.csrf_form
 
     if not g.user or not form.validate_on_submit():
@@ -391,14 +404,13 @@ def like_message(message_id):
 
     if message in g.user.liked_messages:
         g.user.liked_messages.remove(message)
-        db.session.commit()
 
     else:
         g.user.liked_messages.append(message)
-        db.session.commit()
 
-    """ print(f'***********liked: {g.user.liked_messages}') """
-    return redirect(f"/users/{g.user.id}")
+    db.session.commit()
+
+    return redirect(f"{path}")
 
 
 ##############################################################################
@@ -413,12 +425,10 @@ def homepage():
     - logged in: 100 most recent messages of self & followed_users
     """
 
-    print('It works!')
-
     if g.user:
         messages = (Message
                     .query
-                    .filter(Message.user_id.in_([followed.id for followed in g.user.following]))
+                    .filter(Message.user_id.in_([followed.id for followed in g.user.following]) | (Message.user_id == g.user.id))
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
